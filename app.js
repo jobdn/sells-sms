@@ -1,6 +1,6 @@
 const express = require("express");
-const nodemailer = require("nodemailer");
-const { PrismaClient } = require("@prisma/client");
+// const nodemailer = require("nodemailer");
+// const { PrismaClient } = require("@prisma/client");
 const app = express();
 const PORT = 3010;
 
@@ -35,13 +35,15 @@ async function sendSMSCode(phone, code) {
   // Например: Twilio, SMS.ru, AWS SNS и т.д.
   console.log(`Отправка SMS на ${phone} с кодом: ${code}`);
 
-  const response = await fetch("https://new.smsgorod.ru/apiSms/create", {
-    method: "POST",
-    body: JSON.stringify({
-      apiKey: process.env.API_KEY,
-      sms: [{ text: code, phone: phone }],
-    }),
-  }).then((res) => res.json());
+  const response = (
+    await fetch("https://new.smsgorod.ru/apiSms/create", {
+      method: "POST",
+      body: JSON.stringify({
+        apiKey: process.env.API_KEY,
+        sms: [{ text: code, phone: phone }],
+      }),
+    })
+  ).then((res) => res.json());
 
   console.log(response.body);
 
