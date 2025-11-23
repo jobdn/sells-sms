@@ -1,0 +1,71 @@
+# version: "3.7"
+
+# services:
+#   postgres:
+#     image: postgres
+#     restart: always
+#     environment:
+#       - POSTGRES_DB=sell
+#       - POSTGRES_USER=admin
+#       - POSTGRES_PASSWORD=prisma
+#     ports:
+#       - "5432:5432"
+#     networks:
+#       - prisma-network
+#     healthcheck:
+#       test: ["CMD-SHELL", "pg_isready -U prisma -d postgres"]
+#       interval: 5s
+#       timeout: 2s
+#       retries: 20
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+#     command: postgres -c listen_addresses='*'
+#     logging:
+#       options:
+#         max-size: "10m"
+#         max-file: "3"
+
+# networks:
+#   prisma-network:
+
+# volumes:
+#   postgres_data:
+
+version: "3.7"
+name: sell-postgres
+
+services:
+  postgres:
+    image: postgres
+    restart: always
+    environment:
+      - POSTGRES_DB=sells
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=prisma
+    ports:
+      - "5432:5432"
+    networks:
+      - prisma-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U admin -d sells",
+          "pg_isready -U admin -d sell_shadow",
+        ]
+      interval: 5s
+      timeout: 2s
+      retries: 20
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    command: postgres -c listen_addresses='*'
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  prisma-network:
+
+volumes:
+  postgres_data:
