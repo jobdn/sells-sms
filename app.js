@@ -2,6 +2,8 @@ const express = require("express");
 // const nodemailer = require("nodemailer");
 // const { PrismaClient } = require("@prisma/client");
 const app = express();
+const axiosHttp = require("axios");
+require("dotenv").config();
 const PORT = 3010;
 
 // Инициализация Prisma Client
@@ -24,6 +26,8 @@ app.use(express.json());
 //   },
 // });
 
+const otpStorage = {};
+
 // Функция для генерации 6-значного кода
 function generateCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -31,24 +35,32 @@ function generateCode() {
 
 // Функция для отправки SMS (заглушка - здесь можно интегрировать Twilio, SMS.ru и т.д.)
 async function sendSMSCode(phone, code) {
-  // TODO: Интегрировать реальный сервис отправки SMS
-  // Например: Twilio, SMS.ru, AWS SNS и т.д.
-  console.log(`Отправка SMS на ${phone} с кодом: ${code}`);
+  const smsText = `Для подтверждения введите код: ${code}`;
 
-  const response = (
-    await fetch("https://new.smsgorod.ru/apiSms/create", {
-      method: "POST",
-      body: JSON.stringify({
-        apiKey: process.env.API_KEY,
-        sms: [{ text: code, phone: phone }],
-      }),
-    })
-  ).then((res) => res.json());
+  try {
+    const response = await axiosHttp.post(
+      "https://api.exolve.ru/messaging/v1/SendSMS",
+      {
+        number: process.env.PHONE_NUMBER,
+        destination: phone,
+        text: smsText,
+      },
+      {
+        headers: {
+          Authorization: process.env.EXOLVE_API_KEY,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    console.log("API Response:", response.data);
 
-  console.log(response.body);
-
-  // В реальном приложении здесь будет вызов API сервиса отправки SMS
-  return true;
+    // Сохранение пароля для будущей проверки (используйте базу данных в реальном приложении)
+    otpStorage[phone] = code;
+    return true;
+  } catch (error) {
+    console.error("Ошибка при отправке SMS:", error);
+    return false;
+  }
 }
 
 // Функция для отправки email с контактами пользователя
@@ -76,48 +88,49 @@ async function sendSMSCode(phone, code) {
 // }
 
 app.post("/", async (req, res) => {
-  try {
-    const { fullname, phone, city } = req.body;
-
-    // Валидация обязательных полей
-    if (!fullname || !phone || !city) {
-      return res.status(400).json({
-        error: "Необходимо указать все поля: fullname, phone, city",
-      });
-    }
-
-    // Генерация 6-значного кода
-    const code = generateCode();
-
-    // Сохранение кода и данных пользователя в БД
-    // Используем upsert для обновления существующей записи или создания новой
-    // await prisma.userCode.upsert({
-    //   where: { phone },
-    //   update: {
-    //     code,
-    //     fullname,
-    //     city,
-    //   },
-    //   create: {
-    //     phone,
-    //     code,
-    //     fullname,
-    //     city,
-    //   },
-    // });
-
-    // Отправка кода на телефон
-    await sendSMSCode(phone, code);
-
-    res.json({
-      success: true,
-    });
-  } catch (error) {
-    console.error("Ошибка при обработке запроса:", error);
-    res.status(500).json({
-      error: "Внутренняя ошибка сервера",
-    });
-  }
+  // try {
+  //   const { fullname, phone, city } = req.body;
+  //   // Валидация обязательных полей
+  //   if (!fullname || !phone || !city) {
+  //     return res.status(400).json({
+  //       error: "Необходимо указать все поля: fullname, phone, city",
+  //     });
+  //   }
+  //   // Генерация 6-значного кода
+  //   const code = generateCode();
+  //   // Сохранение кода и данных пользователя в БД
+  //   // Используем upsert для обновления существующей записи или создания новой
+  //   // await prisma.userCode.upsert({
+  //   //   where: { phone },
+  //   //   update: {
+  //   //     code,
+  //   //     fullname,
+  //   //     city,
+  //   //   },
+  //   //   create: {
+  //   //     phone,
+  //   //     code,
+  //   //     fullname,
+  //   //     city,
+  //   //   },
+  //   // });
+  //   // Отправка кода на телефон
+  //   await sendSMSCode(phone, code);
+  //   return res.status(200).send("Пароль успешно отправлен");
+  // } catch (error) {
+  //   if (error.response) {
+  //     console.error("Ошибка при отправке: ", error.response.data);
+  //     res
+  //       .status(500)
+  //       .send(
+  //         `Не удалось отправить пароль: ${error.response.data.error.message}`
+  //       );
+  //   } else {
+  //     console.error("Ошибка: ", error.message);
+  //     res.status(500).send(`Не удалось отправить пароль: ${error.message}`);
+  //   }
+  // }
+  return res.status(200).send({ message: "OK" });
 });
 
 // app.post("/verify", async (req, res) => {
