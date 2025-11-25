@@ -88,6 +88,7 @@ async function sendSMSCode(phone, code) {
 // }
 
 app.post("/", async (req, res) => {
+  console.log("data received", req.body);
   // try {
   //   const { fullname, phone, city } = req.body;
   //   // Валидация обязательных полей
