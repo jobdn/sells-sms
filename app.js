@@ -3,6 +3,8 @@ const express = require("express");
 const { PrismaClient } = require("@prisma/client");
 const app = express();
 const axiosHttp = require("axios");
+var cors = require("cors");
+
 require("dotenv").config();
 const PORT = 3010;
 const { normalizeRuPhone } = require("./utils");
