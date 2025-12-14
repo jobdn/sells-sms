@@ -1,13 +1,14 @@
 const express = require("express");
 // const nodemailer = require("nodemailer");
-// const { PrismaClient } = require("@prisma/client");
+const { PrismaClient } = require("@prisma/client");
 const app = express();
 const axiosHttp = require("axios");
 require("dotenv").config();
 const PORT = 3010;
+const { normalizeRuPhone } = require("./utils");
 
 // Инициализация Prisma Client
-// const prisma = new PrismaClient();
+const prisma = new PrismaClient();
 
 // Middleware для парсинга JSON
 app.use(express.json());
@@ -26,40 +27,28 @@ app.use(express.json());
 //   },
 // });
 
-const otpStorage = {};
-
 // Функция для генерации 6-значного кода
 function generateCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+const SENDER_NAME = process.env.SENDER_NAME;
+const API_KEY = process.env.PROSTO_SMS_API_KEY;
+
 // Функция для отправки SMS (заглушка - здесь можно интегрировать Twilio, SMS.ru и т.д.)
 async function sendSMSCode(phone, code) {
-  const smsText = `Для подтверждения введите код: ${code}`;
+  const smsText = `Код подтверждения: ${code}`;
 
-  try {
-    const response = await axiosHttp.post(
-      "https://api.exolve.ru/messaging/v1/SendSMS",
-      {
-        number: process.env.PHONE_NUMBER,
-        destination: phone,
-        text: smsText,
-      },
-      {
-        headers: {
-          Authorization: process.env.EXOLVE_API_KEY,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    console.log("API Response:", response.data);
+  const response = await axiosHttp.post(
+    `https://ssl.bs00.ru/?method=push_msg&key=${API_KEY}&text=${smsText}&phone=${phone}&sender_name=${SENDER_NAME}&priority=1&format=json`
+  );
 
-    // Сохранение пароля для будущей проверки (используйте базу данных в реальном приложении)
-    otpStorage[phone] = code;
-    return true;
-  } catch (error) {
-    console.error("Ошибка при отправке SMS:", error);
-    return false;
+  const responseData = response.data.response;
+
+  console.log("response", responseData);
+
+  if (+responseData?.msg?.err_code) {
+    throw new Error(responseData?.msg?.text);
   }
 }
 
@@ -89,108 +78,130 @@ async function sendSMSCode(phone, code) {
 
 app.post("/", async (req, res) => {
   console.log("data received", req.body);
-  // try {
-  //   const { fullname, phone, city } = req.body;
-  //   // Валидация обязательных полей
-  //   if (!fullname || !phone || !city) {
-  //     return res.status(400).json({
-  //       error: "Необходимо указать все поля: fullname, phone, city",
-  //     });
-  //   }
-  //   // Генерация 6-значного кода
-  //   const code = generateCode();
-  //   // Сохранение кода и данных пользователя в БД
-  //   // Используем upsert для обновления существующей записи или создания новой
-  //   // await prisma.userCode.upsert({
-  //   //   where: { phone },
-  //   //   update: {
-  //   //     code,
-  //   //     fullname,
-  //   //     city,
-  //   //   },
-  //   //   create: {
-  //   //     phone,
-  //   //     code,
-  //   //     fullname,
-  //   //     city,
-  //   //   },
-  //   // });
-  //   // Отправка кода на телефон
-  //   await sendSMSCode(phone, code);
-  //   return res.status(200).send("Пароль успешно отправлен");
-  // } catch (error) {
-  //   if (error.response) {
-  //     console.error("Ошибка при отправке: ", error.response.data);
-  //     res
-  //       .status(500)
-  //       .send(
-  //         `Не удалось отправить пароль: ${error.response.data.error.message}`
-  //       );
-  //   } else {
-  //     console.error("Ошибка: ", error.message);
-  //     res.status(500).send(`Не удалось отправить пароль: ${error.message}`);
-  //   }
-  // }
+  try {
+    const { fullname, phone, city } = req.body;
+    const normalizedPhone = normalizeRuPhone(phone);
+
+    if (!normalizedPhone) {
+      return res.status(400).json({
+        error: "Некорректный номер телефона",
+      });
+    }
+
+    // Валидация обязательных полей
+    if (!fullname || !city) {
+      return res.status(400).json({
+        error: "Необходимо указать все поля: fullname, city",
+      });
+    }
+    // Генерация 6-значного кода
+    const code = generateCode();
+
+    await sendSMSCode(normalizedPhone, code);
+
+    // Сохранение кода и данных пользователя в БД
+    // Используем upsert для обновления существующей записи или создания новой
+    await prisma.userCode.upsert({
+      where: { phone: normalizedPhone },
+      update: {
+        code,
+        fullname,
+        city,
+      },
+      create: {
+        phone: normalizedPhone,
+        code,
+        fullname,
+        city,
+      },
+    });
+    // Отправка кода на телефон
+
+    return res.status(200).send("Пароль успешно отправлен");
+  } catch (error) {
+    if (error.response) {
+      console.error("Ошибка при отправке: ", error.response.data);
+      res
+        .status(500)
+        .send(
+          `Не удалось отправить пароль: ${error.response.data.error.message}`
+        );
+    } else {
+      console.error("Ошибка: ", error.message);
+      res.status(500).send(`Не удалось отправить пароль: ${error.message}`);
+    }
+  }
   return res.status(200).send({ message: "OK" });
 });
 
-// app.post("/verify", async (req, res) => {
-//   try {
-//     const { phone, otp } = req.body;
+app.post("/verify", async (req, res) => {
+  try {
+    const { phone, otp } = req.body;
 
-//     // Валидация обязательных полей
-//     if (!phone || !otp) {
-//       return res.status(400).json({
-//         error: "Необходимо указать phone и otp",
-//       });
-//     }
+    const normalizedPhone = normalizeRuPhone(phone);
 
-//     // Поиск данных пользователя в БД
-//     // const userData = await prisma.userCode.findUnique({
-//     //   where: { phone },
-//     // });
+    console.log("normalizedPhone", normalizedPhone, phone, otp);
 
-//     // if (!userData) {
-//     //   return res.status(404).json({
-//     //     error:
-//     //       "Код не найден. Возможно, истек срок действия или телефон неверен.",
-//     //   });
-//     // }
+    if (!normalizedPhone) {
+      return res.status(400).json({
+        error: "Некорректный номер телефона",
+      });
+    }
 
-//     // Проверка, не был ли код уже использован
-//     // if (userData.verified) {
-//     //   return res.status(400).json({
-//     //     error: "Код уже был использован",
-//     //   });
-//     // }
+    // Валидация обязательных полей
+    if (!otp) {
+      return res.status(400).json({
+        error: "Необходимо указать otp",
+      });
+    }
 
-//     // Проверка совпадения кода
-//     if (userData.code !== otp) {
-//       return res.status(400).json({
-//         error: "Неверный код",
-//       });
-//     }
+    // Поиск данных пользователя в БД
+    const userData = await prisma.userCode.findUnique({
+      where: { phone: normalizedPhone },
+    });
 
-//     // Код совпал - отправляем контакты на почту
-//     // await sendUserContacts(userData.fullname, userData.phone, userData.city);
+    if (!userData) {
+      return res.status(404).json({
+        error:
+          "Код не найден. Возможно, истек срок действия или телефон неверен.",
+      });
+    }
 
-//     // Помечаем код как использованный
-//     await prisma.userCode.update({
-//       where: { phone },
-//       data: { verified: true },
-//     });
+    // Проверка, не был ли код уже использован
+    if (userData.verified) {
+      return res.status(400).json({
+        error: "Код уже был использован",
+      });
+    }
 
-//     res.json({
-//       success: true,
-//       message: "Код подтвержден. Контакты отправлены на почту.",
-//     });
-//   } catch (error) {
-//     console.error("Ошибка при проверке кода:", error);
-//     res.status(500).json({
-//       error: "Внутренняя ошибка сервера",
-//     });
-//   }
-// });
+    // Проверка совпадения кода
+    if (userData.code !== otp) {
+      return res.status(400).json({
+        error: "Неверный код",
+      });
+    }
+
+    // Код совпал - отправляем контакты на почту
+
+    // Помечаем код как использованный
+    await prisma.userCode.update({
+      where: { phone: normalizedPhone },
+      data: { verified: true },
+    });
+
+    // await sendUserContacts(userData.fullname, userData.phone, userData.city);
+
+    res.json({
+      success: true,
+      message: "Код подтвержден. Контакты отправлены на почту.",
+    });
+  } catch (error) {
+    console.error("Ошибка при проверке кода:", error);
+    res.status(500).json({
+      error: "Внутренняя ошибка сервера",
+    });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
