@@ -14,20 +14,21 @@ const prisma = new PrismaClient();
 
 // Middleware для парсинга JSON
 app.use(express.json());
+app.use(cors());
 
-app.use(
-  cors({
-    origin: [
-      "https://project15629466.tilda.ws",
-      "https://project15629466.tilda.ws/", // можно не надо, но иногда путают
-      "http://localhost:3000",
-      "http://localhost:5173",
-    ],
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    // credentials: true, // включай только если реально используешь cookies/сессии
-  })
-);
+// app.use(
+//   cors({
+//     origin: [
+//       "https://project15629466.tilda.ws",
+//       "https://project15629466.tilda.ws/", // можно не надо, но иногда путают
+//       "http://localhost:3000",
+//       "http://localhost:5173",
+//     ],
+//     methods: ["GET", "POST", "OPTIONS"],
+//     allowedHeaders: ["Content-Type", "Authorization"],
+//     // credentials: true, // включай только если реально используешь cookies/сессии
+//   })
+// );
 
 // Email получателя (можно вынести в переменные окружения)
 // const RECIPIENT_EMAIL = process.env.RECIPIENT_EMAIL || "recipient@example.com";
@@ -50,13 +51,19 @@ function generateCode() {
 
 const SENDER_NAME = process.env.SENDER_NAME;
 const API_KEY = process.env.PROSTO_SMS_API_KEY;
+const LOGIN = process.env.LOGIN;
+const PASSWORD = process.env.PASSWORD;
 
 // Функция для отправки SMS (заглушка - здесь можно интегрировать Twilio, SMS.ru и т.д.)
 async function sendSMSCode(phone, code) {
   const smsText = `Код подтверждения: ${code}`;
 
+  // const response = await axiosHttp.post(
+  //   `https://ssl.bs00.ru/?method=push_msg&key=${API_KEY}&text=${smsText}&phone=${phone}&sender_name=${SENDER_NAME}&priority=1&format=json`
+  // );
+
   const response = await axiosHttp.post(
-    `https://ssl.bs00.ru/?method=push_msg&key=${API_KEY}&text=${smsText}&phone=${phone}&sender_name=${SENDER_NAME}&priority=1&format=json`
+    `https://ssl.bs00.ru/?method=push_msg&email=${LOGIN}&password=${PASSWORD}&text=${smsText}&phone=${phone}&sender_name=${SENDER_NAME}&priority=1&format=json`
   );
 
   const responseData = response.data.response;
