@@ -13,6 +13,20 @@ const prisma = new PrismaClient();
 // Middleware для парсинга JSON
 app.use(express.json());
 
+app.use(
+  cors({
+    origin: [
+      "https://project15629466.tilda.ws",
+      "https://project15629466.tilda.ws/", // можно не надо, но иногда путают
+      "http://localhost:3000",
+      "http://localhost:5173",
+    ],
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    // credentials: true, // включай только если реально используешь cookies/сессии
+  })
+);
+
 // Email получателя (можно вынести в переменные окружения)
 // const RECIPIENT_EMAIL = process.env.RECIPIENT_EMAIL || "recipient@example.com";
 
