@@ -2,7 +2,7 @@ name: sell-postgres
 
 services:
   postgres:
-    image: postgres
+    image: postgres:16
     restart: always
     environment:
       - POSTGRES_DB=sells
