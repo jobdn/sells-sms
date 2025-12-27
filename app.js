@@ -62,17 +62,17 @@ async function sendSMSCode(phone, code) {
   //   `https://ssl.bs00.ru/?method=push_msg&key=${API_KEY}&text=${smsText}&phone=${phone}&sender_name=${SENDER_NAME}&priority=1&format=json`
   // );
 
-  const response = await axiosHttp.post(
-    `https://ssl.bs00.ru/?method=push_msg&email=${LOGIN}&password=${PASSWORD}&text=${smsText}&phone=${phone}&sender_name=${SENDER_NAME}&priority=1&format=json`
-  );
+  // const response = await axiosHttp.post(
+  //   `https://ssl.bs00.ru/?method=push_msg&email=${LOGIN}&password=${PASSWORD}&text=${smsText}&phone=${phone}&sender_name=${SENDER_NAME}&priority=1&format=json`
+  // );
 
-  const responseData = response.data.response;
+  // const responseData = response.data.response;
 
-  console.log("response", responseData);
+  // console.log("response", responseData);
 
-  if (+responseData?.msg?.err_code) {
-    throw new Error(responseData?.msg?.text);
-  }
+  // if (+responseData?.msg?.err_code) {
+  //   throw new Error(responseData?.msg?.text);
+  // }
 }
 
 // Функция для отправки email с контактами пользователя
