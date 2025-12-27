@@ -140,7 +140,7 @@ app.post("/", async (req, res) => {
     });
     // Отправка кода на телефон
 
-    return res.status(200).send("Пароль успешно отправлен");
+    return res.status(200).send({ message: "OK" });
   } catch (error) {
     if (error.response) {
       console.error("Ошибка при отправке: ", error.response.data);
