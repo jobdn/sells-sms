@@ -1,5 +1,5 @@
 const express = require("express");
-// const nodemailer = require("nodemailer");
+const nodemailer = require("nodemailer");
 const { PrismaClient } = require("@prisma/client");
 const app = express();
 const axiosHttp = require("axios");
@@ -16,34 +16,6 @@ const prisma = new PrismaClient();
 app.use(express.json());
 app.use(cors());
 
-// app.use(
-//   cors({
-//     origin: [
-//       "https://project15629466.tilda.ws",
-//       "https://project15629466.tilda.ws/", // можно не надо, но иногда путают
-//       "http://localhost:3000",
-//       "http://localhost:5173",
-//     ],
-//     methods: ["GET", "POST", "OPTIONS"],
-//     allowedHeaders: ["Content-Type", "Authorization"],
-//     // credentials: true, // включай только если реально используешь cookies/сессии
-//   })
-// );
-
-// Email получателя (можно вынести в переменные окружения)
-// const RECIPIENT_EMAIL = process.env.RECIPIENT_EMAIL || "recipient@example.com";
-
-// Настройка транспорта для отправки email
-// const transporter = nodemailer.createTransport({
-//   host: process.env.SMTP_HOST || "smtp.gmail.com",
-//   port: process.env.SMTP_PORT || 587,
-//   secure: false, // true для 465, false для других портов
-//   auth: {
-//     user: process.env.SMTP_USER, // email отправителя
-//     pass: process.env.SMTP_PASS, // пароль отправителя
-//   },
-// });
-
 // Функция для генерации 6-значного кода
 function generateCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -51,53 +23,24 @@ function generateCode() {
 
 const SENDER_NAME = process.env.SENDER_NAME;
 const API_KEY = process.env.PROSTO_SMS_API_KEY;
-const LOGIN = process.env.LOGIN;
-const PASSWORD = process.env.PASSWORD;
+// const LOGIN = process.env.LOGIN;
+// const PASSWORD = process.env.PASSWORD;
 
 // Функция для отправки SMS (заглушка - здесь можно интегрировать Twilio, SMS.ru и т.д.)
 async function sendSMSCode(phone, code) {
-  const smsText = `Код подтверждения: ${code}`;
-
+  // const smsText = `Код подтверждения: ${code}`;
   // const response = await axiosHttp.post(
   //   `https://ssl.bs00.ru/?method=push_msg&key=${API_KEY}&text=${smsText}&phone=${phone}&sender_name=${SENDER_NAME}&priority=1&format=json`
   // );
-
   // const response = await axiosHttp.post(
   //   `https://ssl.bs00.ru/?method=push_msg&email=${LOGIN}&password=${PASSWORD}&text=${smsText}&phone=${phone}&sender_name=${SENDER_NAME}&priority=1&format=json`
   // );
-
   // const responseData = response.data.response;
-
   // console.log("response", responseData);
-
   // if (+responseData?.msg?.err_code) {
   //   throw new Error(responseData?.msg?.text);
   // }
 }
-
-// Функция для отправки email с контактами пользователя
-// async function sendUserContacts(fullname, phone, city) {
-//   try {
-//     const mailOptions = {
-//       from: process.env.SMTP_USER || "noreply@example.com",
-//       to: RECIPIENT_EMAIL,
-//       subject: "Новые контакты пользователя",
-//       html: `
-//         <h2>Новые контакты пользователя</h2>
-//         <p><strong>ФИО:</strong> ${fullname}</p>
-//         <p><strong>Телефон:</strong> ${phone}</p>
-//         <p><strong>Город:</strong> ${city}</p>
-//       `,
-//     };
-
-//     const info = await transporter.sendMail(mailOptions);
-//     console.log("Email отправлен:", info.messageId);
-//     return true;
-//   } catch (error) {
-//     console.error("Ошибка при отправке email:", error);
-//     throw error;
-//   }
-// }
 
 app.post("/", async (req, res) => {
   console.log("data received", req.body);
@@ -157,6 +100,52 @@ app.post("/", async (req, res) => {
   return res.status(200).send({ message: "OK" });
 });
 
+// Настройка транспорта для отправки email
+console.log({
+  host: process.env.MAIL_HOST,
+  port: process.env.MAIL_PORT,
+  secure: false, // true для 465, false для других портов
+  auth: {
+    user: process.env.MAIL_LOGIN, // email отправителя
+    pass: process.env.MAIL_PASSWORD, // пароль отправителя
+  },
+});
+
+const transporter = nodemailer.createTransport({
+  host: process.env.MAIL_HOST,
+  port: process.env.MAIL_PORT,
+  secure: false, // true для 465, false для других портов
+  auth: {
+    user: process.env.MAIL_LOGIN, // email отправителя
+    pass: process.env.MAIL_PASSWORD, // пароль отправителя
+  },
+});
+
+// Функция для отправки email с контактами пользователя
+async function sendUserContacts(fullname, phone, city) {
+  try {
+    const mailOptions = {
+      from: process.env.MAIL_LOGIN,
+      to: process.env.MAIL_RECEIVER,
+      subject: "Новые контакты пользователя",
+      html: `
+      <h2>Новые контакты пользователя</h2>
+      <p><strong>ФИО:</strong> ${fullname}</p>
+      <p><strong>Телефон:</strong> ${phone}</p>
+      <p><strong>Город:</strong> ${city}</p>
+      `,
+    };
+    console.log("mailOptions", mailOptions);
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Email отправлен:", info.messageId);
+    return true;
+  } catch (error) {
+    console.error("Ошибка при отправке email:", error);
+    throw error;
+  }
+}
+
 app.post("/verify", async (req, res) => {
   try {
     const { phone, otp } = req.body;
@@ -191,11 +180,11 @@ app.post("/verify", async (req, res) => {
     }
 
     // Проверка, не был ли код уже использован
-    if (userData.verified) {
-      return res.status(400).json({
-        error: "Код уже был использован",
-      });
-    }
+    // if (userData.verified) {
+    //   return res.status(400).json({
+    //     error: "Код уже был использован",
+    //   });
+    // }
 
     // Проверка совпадения кода
     if (userData.code !== otp) {
@@ -212,7 +201,7 @@ app.post("/verify", async (req, res) => {
       data: { verified: true },
     });
 
-    // await sendUserContacts(userData.fullname, userData.phone, userData.city);
+    await sendUserContacts(userData.fullname, userData.phone, userData.city);
 
     res.json({
       success: true,
