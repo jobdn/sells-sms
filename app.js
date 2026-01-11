@@ -28,18 +28,18 @@ const API_KEY = process.env.PROSTO_SMS_API_KEY;
 
 // Функция для отправки SMS (заглушка - здесь можно интегрировать Twilio, SMS.ru и т.д.)
 async function sendSMSCode(phone, code) {
-  // const smsText = `Код подтверждения: ${code}`;
-  // const response = await axiosHttp.post(
-  //   `https://ssl.bs00.ru/?method=push_msg&key=${API_KEY}&text=${smsText}&phone=${phone}&sender_name=${SENDER_NAME}&priority=1&format=json`
-  // );
+  const smsText = `Код подтверждения: ${code}`;
+  const response = await axiosHttp.post(
+    `https://ssl.bs00.ru/?method=push_msg&key=${API_KEY}&text=${smsText}&phone=${phone}&sender_name=${SENDER_NAME}&priority=1&format=json`
+  );
   // const response = await axiosHttp.post(
   //   `https://ssl.bs00.ru/?method=push_msg&email=${LOGIN}&password=${PASSWORD}&text=${smsText}&phone=${phone}&sender_name=${SENDER_NAME}&priority=1&format=json`
   // );
-  // const responseData = response.data.response;
-  // console.log("response", responseData);
-  // if (+responseData?.msg?.err_code) {
-  //   throw new Error(responseData?.msg?.text);
-  // }
+  const responseData = response.data.response;
+
+  if (+responseData?.msg?.err_code) {
+    throw new Error(responseData?.msg?.text);
+  }
 }
 
 app.post("/", async (req, res) => {
@@ -100,17 +100,6 @@ app.post("/", async (req, res) => {
   return res.status(200).send({ message: "OK" });
 });
 
-// Настройка транспорта для отправки email
-console.log({
-  host: process.env.MAIL_HOST,
-  port: process.env.MAIL_PORT,
-  secure: false, // true для 465, false для других портов
-  auth: {
-    user: process.env.MAIL_LOGIN, // email отправителя
-    pass: process.env.MAIL_PASSWORD, // пароль отправителя
-  },
-});
-
 const transporter = nodemailer.createTransport({
   host: process.env.MAIL_HOST,
   port: process.env.MAIL_PORT,
@@ -135,7 +124,6 @@ async function sendUserContacts(fullname, phone, city) {
       <p><strong>Город:</strong> ${city}</p>
       `,
     };
-    console.log("mailOptions", mailOptions);
 
     const info = await transporter.sendMail(mailOptions);
     console.log("Email отправлен:", info.messageId);
@@ -180,11 +168,11 @@ app.post("/verify", async (req, res) => {
     }
 
     // Проверка, не был ли код уже использован
-    // if (userData.verified) {
-    //   return res.status(400).json({
-    //     error: "Код уже был использован",
-    //   });
-    // }
+    if (userData.verified) {
+      return res.status(400).json({
+        error: "Код уже был использован",
+      });
+    }
 
     // Проверка совпадения кода
     if (userData.code !== otp) {
