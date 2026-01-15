@@ -28,14 +28,14 @@ const API_KEY = process.env.PROSTO_SMS_API_KEY;
 
 // Функция для отправки SMS (заглушка - здесь можно интегрировать Twilio, SMS.ru и т.д.)
 async function sendSMSCode(phone, code) {
-  // const smsText = `Код подтверждения: ${code}`;
-  // const response = await axiosHttp.post(
-  //   `https://ssl.bs00.ru/?method=push_msg&key=${API_KEY}&text=${smsText}&phone=${phone}&sender_name=${SENDER_NAME}&priority=1&format=json`
-  // );
-  // const responseData = response.data.response;
-  // if (+responseData?.msg?.err_code) {
-  //   throw new Error(responseData?.msg?.text);
-  // }
+  const smsText = `Код подтверждения: ${code}`;
+  const response = await axiosHttp.post(
+    `https://ssl.bs00.ru/?method=push_msg&key=${API_KEY}&text=${smsText}&phone=${phone}&sender_name=${SENDER_NAME}&priority=1&format=json`
+  );
+  const responseData = response.data.response;
+  if (+responseData?.msg?.err_code) {
+    throw new Error(responseData?.msg?.text);
+  }
 }
 
 app.post("/", async (req, res) => {
