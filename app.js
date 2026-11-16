@@ -30,7 +30,7 @@ const API_KEY = process.env.PROSTO_SMS_API_KEY;
 async function sendSMSCode(phone, code) {
   const smsText = `Код подтверждения: ${code}`;
   const response = await axiosHttp.post(
-    `https://ssl.bs00.ru/?method=push_msg&key=${API_KEY}&text=${smsText}&phone=${phone}&sender_name=${SENDER_NAME}&priority=1&format=json`
+    `https://ssl.bs00.ru/?method=push_msg&key=${API_KEY}&text=${smsText}&phone=${phone}&sender_name=${SENDER_NAME}&priority=1&format=json`,
   );
   const responseData = response.data.response;
   if (+responseData?.msg?.err_code) {
@@ -87,7 +87,7 @@ app.post("/", async (req, res) => {
       res
         .status(500)
         .send(
-          `Не удалось отправить пароль: ${error.response.data.error.message}`
+          `Не удалось отправить пароль: ${error.response.data.error.message}`,
         );
     } else {
       console.error("Ошибка: ", error.message);
@@ -108,7 +108,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Функция для отправки email с контактами пользователя
-async function sendUserContacts(fullname, phone, city) {
+async function sendUserContacts(fullname, phone, city, ycild, clientID) {
   try {
     const mailOptions = {
       from: process.env.MAIL_LOGIN,
@@ -119,6 +119,8 @@ async function sendUserContacts(fullname, phone, city) {
       <p><strong>ФИО:</strong> ${fullname}</p>
       <p><strong>Телефон:</strong> ${phone}</p>
       <p><strong>Город:</strong> ${city}</p>
+      <p><strong>YCLID:</strong> ${ycild}</p>
+      <p><strong>ClientID:</strong> ${clientID}</p>
       `,
     };
 
@@ -133,7 +135,7 @@ async function sendUserContacts(fullname, phone, city) {
 
 app.post("/verify", async (req, res) => {
   try {
-    const { phone, otp } = req.body;
+    const { phone, otp, yclid, clientID } = req.body;
 
     const normalizedPhone = normalizeRuPhone(phone);
 
@@ -186,7 +188,13 @@ app.post("/verify", async (req, res) => {
       data: { verified: true },
     });
 
-    await sendUserContacts(userData.fullname, userData.phone, userData.city);
+    await sendUserContacts(
+      userData.fullname,
+      userData.phone,
+      userData.city,
+      yclid,
+      clientID,
+    );
 
     res.json({
       success: true,
